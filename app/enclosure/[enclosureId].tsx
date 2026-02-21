@@ -12,11 +12,19 @@ interface Animal {
   age?: number;
 }
 
+interface Job {
+  id: string;
+  name: string;
+  actionType?: string;
+  description?: string;
+}
+
 interface Enclosure {
   id: string;
   name: string;
   description?: string;
   animals: Animal[];
+  jobs: Job[];
 }
 
 export default function ModalScreen() {
@@ -64,6 +72,19 @@ export default function ModalScreen() {
           ))
         ) : (
           <ThemedText>No animals in this enclosure</ThemedText>
+        )}
+
+        <ThemedText type="subtitle" style={styles.sectionTitle}>Jobs</ThemedText>
+        {enclosure.jobs?.length > 0 ? (
+          enclosure.jobs.map((job) => (
+            <ThemedView key={job.id} style={styles.animalCard}>
+              <ThemedText style={styles.animalName}>{job.name}</ThemedText>
+              {job.actionType && <ThemedText style={styles.animalDetail}>Type: {job.actionType}</ThemedText>}
+              {job.description && <ThemedText style={styles.animalDetail}>{job.description}</ThemedText>}
+            </ThemedView>
+          ))
+        ) : (
+          <ThemedText>No jobs for this enclosure</ThemedText>
         )}
 
         <Link href="/" dismissTo style={styles.link}>
