@@ -7,6 +7,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -32,6 +33,7 @@ interface Job {
   actionType?: string;
   description?: string;
   isCompleted?: boolean;
+  isRecurring?: boolean;
 }
 
 interface Comment {
@@ -62,6 +64,13 @@ export default function ModalScreen() {
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const [createJobModalVisible, setCreateJobModalVisible] = useState(false);
+  const [jobName, setJobName] = useState('');
+  const [jobActionType, setJobActionType] = useState('');
+  const [jobDescription, setJobDescription] = useState('');
+  const [jobIsRecurring, setJobIsRecurring] = useState(false);
+  const [submittingJob, setSubmittingJob] = useState(false);
 
   const fetchEnclosure = useCallback(async () => {
     try {
@@ -96,6 +105,32 @@ export default function ModalScreen() {
       setError('Failed to mark job as complete');
     } finally {
       setCompletingJobId(null);
+    }
+  };
+
+  const createJob = async () => {
+    if (!jobName.trim()) return;
+    setSubmittingJob(true);
+    try {
+      await apiFetch(`https://localhost:44311/Enclosures/${enclosureId}/Jobs`, {
+        method: 'POST',
+        body: JSON.stringify({
+          name: jobName.trim(),
+          actionType: jobActionType.trim() || undefined,
+          description: jobDescription.trim() || undefined,
+          isRecurring: jobIsRecurring,
+        }),
+      });
+      setJobName('');
+      setJobActionType('');
+      setJobDescription('');
+      setJobIsRecurring(false);
+      setCreateJobModalVisible(false);
+      fetchEnclosure();
+    } catch {
+      setError('Failed to create job');
+    } finally {
+      setSubmittingJob(false);
     }
   };
 
@@ -143,6 +178,12 @@ export default function ModalScreen() {
         )}
 
         <ThemedText type="subtitle" style={styles.sectionTitle}>Jobs</ThemedText>
+        <TouchableOpacity
+          style={styles.addCommentButton}
+          onPress={() => setCreateJobModalVisible(true)}
+        >
+          <ThemedText style={styles.addCommentButtonText}>Add Job</ThemedText>
+        </TouchableOpacity>
         {enclosure.jobs?.length > 0 ? (
           enclosure.jobs.map((job) => (
             <ThemedView key={job.id} style={styles.card}>
@@ -159,6 +200,11 @@ export default function ModalScreen() {
                   {job.description && (
                     <ThemedText style={[styles.cardDetail, job.isCompleted && styles.completedText]}>
                       {job.description}
+                    </ThemedText>
+                  )}
+                  {job.isRecurring && (
+                    <ThemedText style={[styles.recurringBadge, job.isCompleted && styles.completedText]}>
+                      ↻ Daily
                     </ThemedText>
                   )}
                 </View>
@@ -248,6 +294,82 @@ export default function ModalScreen() {
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <ThemedText style={styles.submitButtonText}>Submit</ThemedText>
+                )}
+              </TouchableOpacity>
+            </ThemedView>
+          </ThemedView>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal
+        visible={createJobModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCreateJobModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalBackdrop}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ThemedView style={styles.modalCard}>
+            <ThemedText type="subtitle" style={styles.modalTitle}>Add Job</ThemedText>
+
+            <TextInput
+              style={[styles.textInput, { color: colors.text, borderColor: colors.icon }]}
+              placeholder="Job name *"
+              placeholderTextColor={colors.icon}
+              value={jobName}
+              onChangeText={setJobName}
+              autoFocus
+            />
+            <TextInput
+              style={[styles.textInput, { color: colors.text, borderColor: colors.icon }]}
+              placeholder="Action type (optional)"
+              placeholderTextColor={colors.icon}
+              value={jobActionType}
+              onChangeText={setJobActionType}
+            />
+            <TextInput
+              style={[styles.textInput, styles.textInputMultiline, { color: colors.text, borderColor: colors.icon }]}
+              placeholder="Description (optional)"
+              placeholderTextColor={colors.icon}
+              multiline
+              value={jobDescription}
+              onChangeText={setJobDescription}
+            />
+
+            <ThemedView style={styles.switchRow}>
+              <ThemedText>Repeats Daily</ThemedText>
+              <Switch
+                value={jobIsRecurring}
+                onValueChange={setJobIsRecurring}
+                trackColor={{ false: colors.icon, true: '#0a7ea4' }}
+                thumbColor="#fff"
+              />
+            </ThemedView>
+
+            <ThemedView style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton, { borderColor: colors.icon }]}
+                onPress={() => {
+                  setJobName('');
+                  setJobActionType('');
+                  setJobDescription('');
+                  setJobIsRecurring(false);
+                  setCreateJobModalVisible(false);
+                }}
+              >
+                <ThemedText>Cancel</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.submitButton]}
+                onPress={createJob}
+                disabled={submittingJob || !jobName.trim()}
+              >
+                {submittingJob ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <ThemedText style={styles.submitButtonText}>Add</ThemedText>
                 )}
               </TouchableOpacity>
             </ThemedView>
@@ -373,5 +495,21 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  recurringBadge: {
+    fontSize: 12,
+    color: '#0a7ea4',
+    marginTop: 2,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    backgroundColor: 'transparent',
+  },
+  textInputMultiline: {
+    minHeight: 80,
+    textAlignVertical: 'top',
   },
 });
