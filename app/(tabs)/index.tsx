@@ -1,101 +1,109 @@
+import { useEffect, useState } from 'react';
+import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Link } from 'expo-router';
 
+import { ThemedText } from '@/components/themed-text';
+import { apiFetch } from '@/utils/api';
 
+interface EnclosureSummary {
+  id: string;
+  name: string;
+  coordinate: {
+    longitude: number;
+    latitude: number;
+  };
+}
 
+interface Size {
+  width: number;
+  height: number;
+}
+
+interface ImageOverlay {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+function calcImageOverlay(container: Size, image: Size): ImageOverlay {
+  const containerAR = container.width / container.height;
+  const imageAR = image.width / image.height;
+  const renderedWidth = imageAR > containerAR ? container.width : container.height * imageAR;
+  const renderedHeight = imageAR > containerAR ? container.width / imageAR : container.height;
+  return {
+    left: (container.width - renderedWidth) / 2,
+    top: (container.height - renderedHeight) / 2,
+    width: renderedWidth,
+    height: renderedHeight,
+  };
+}
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const [enclosures, setEnclosures] = useState<EnclosureSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [containerSize, setContainerSize] = useState<Size | null>(null);
+  const [imageSize, setImageSize] = useState<Size | null>(null);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  useEffect(() => {
+    apiFetch('https://localhost:44311/Enclosures')
+      .then((res) => res.json())
+      .then((data) => setEnclosures(data))
+      .catch(() => setEnclosures([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const overlay = containerSize && imageSize ? calcImageOverlay(containerSize, imageSize) : null;
+
+  return (
+    <View
+      style={styles.container}
+      onLayout={(e) => setContainerSize(e.nativeEvent.layout)}
+    >
+      <Image
+        source={require('@/assets/images/NgaManuMap.png')}
+        style={StyleSheet.absoluteFillObject}
+        contentFit="contain"
+        onLoad={(e) => {
+          const { width, height } = e.source;
+          if (width && height) setImageSize({ width, height });
+        }}
+      />
+
+      {loading && <ActivityIndicator style={styles.loader} size="large" />}
+
+      {overlay && enclosures.map((enclosure) => (
+        <Link
+          key={enclosure.id}
+          href={`/enclosure/${enclosure.id}`}
+          style={{
+            position: 'absolute',
+            left: overlay.left + (enclosure.coordinate.longitude / 100) * overlay.width,
+            top: overlay.top + (enclosure.coordinate.latitude / 100) * overlay.height,
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
+          <ThemedText type="defaultSemiBold" style={styles.label}>{enclosure.name}</ThemedText>
+        </Link>
+      ))}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  loader: {
     position: 'absolute',
+    top: '50%',
+    left: '50%',
+  },
+  label: {
+    color: 'white',
+    textShadowColor: 'black',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
   },
 });
