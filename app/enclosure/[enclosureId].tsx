@@ -32,7 +32,7 @@ interface Job {
   name: string;
   actionType?: string;
   description?: string;
-  isCompleted?: boolean;
+  completedAt?: string;
   isRecurring?: boolean;
 }
 
@@ -72,6 +72,17 @@ export default function ModalScreen() {
   const [jobIsRecurring, setJobIsRecurring] = useState(false);
   const [submittingJob, setSubmittingJob] = useState(false);
 
+  const isCompletedToday = (completedAt?: string): boolean => {
+    if (!completedAt) return false;
+    const completed = new Date(completedAt);
+    const today = new Date();
+    return (
+      completed.getFullYear() === today.getFullYear() &&
+      completed.getMonth() === today.getMonth() &&
+      completed.getDate() === today.getDate()
+    );
+  };
+
   const fetchEnclosure = useCallback(async () => {
     try {
       const response = await apiFetch(`https://localhost:44311/Enclosures/${enclosureId}`);
@@ -98,7 +109,7 @@ export default function ModalScreen() {
       if (!response.ok) throw new Error('Failed to complete job');
       setEnclosure((prev) =>
         prev
-          ? { ...prev, jobs: prev.jobs.map((j) => j.id === jobId ? { ...j, isCompleted: true } : j) }
+          ? { ...prev, jobs: prev.jobs.map((j) => j.id === jobId ? { ...j, completedAt: new Date().toISOString() } : j) }
           : prev
       );
     } catch {
@@ -189,26 +200,26 @@ export default function ModalScreen() {
             <ThemedView key={job.id} style={styles.card}>
               <View style={styles.jobRow}>
                 <View style={styles.jobInfo}>
-                  <ThemedText style={[styles.cardTitle, job.isCompleted && styles.completedText]}>
+                  <ThemedText style={[styles.cardTitle, isCompletedToday(job.completedAt) && styles.completedText]}>
                     {job.name}
                   </ThemedText>
                   {job.actionType && (
-                    <ThemedText style={[styles.cardDetail, job.isCompleted && styles.completedText]}>
+                    <ThemedText style={[styles.cardDetail, isCompletedToday(job.completedAt) && styles.completedText]}>
                       Type: {job.actionType}
                     </ThemedText>
                   )}
                   {job.description && (
-                    <ThemedText style={[styles.cardDetail, job.isCompleted && styles.completedText]}>
+                    <ThemedText style={[styles.cardDetail, isCompletedToday(job.completedAt) && styles.completedText]}>
                       {job.description}
                     </ThemedText>
                   )}
                   {job.isRecurring && (
-                    <ThemedText style={[styles.recurringBadge, job.isCompleted && styles.completedText]}>
+                    <ThemedText style={[styles.recurringBadge, isCompletedToday(job.completedAt) && styles.completedText]}>
                       ↻ Daily
                     </ThemedText>
                   )}
                 </View>
-                {!job.isCompleted && (
+                {!isCompletedToday(job.completedAt) && (
                   <TouchableOpacity
                     style={styles.completeButton}
                     onPress={() => completeJob(job.id)}
