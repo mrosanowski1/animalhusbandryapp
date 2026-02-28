@@ -3,6 +3,7 @@ import React from 'react';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { UserMenuButton } from '@/components/user-menu-button';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -13,7 +14,8 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
+        headerShown: true,
+        headerRight: () => <UserMenuButton />,
         tabBarButton: HapticTab,
       }}>
       <Tabs.Screen
@@ -28,6 +30,13 @@ export default function TabLayout() {
         options={{
           title: 'Comments',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="bubble.left.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="setup"
+        options={{
+          title: 'Setup',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
         }}
       />
     </Tabs>

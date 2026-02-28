@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
 import { ThemedText } from '@/components/themed-text';
 import { apiFetch } from '@/utils/api';
@@ -56,11 +57,34 @@ export default function HomeScreen() {
 
   const overlay = containerSize && imageSize ? calcImageOverlay(containerSize, imageSize) : null;
 
+  // Always-current ref so the gesture callback reads the latest overlay without stale closures
+  const overlayRef = useRef(overlay);
+  overlayRef.current = overlay;
+
+  const doubleTap = useMemo(() =>
+    Gesture.Tap()
+      .numberOfTaps(2)
+      .runOnJS(true)
+      .onEnd((event) => {
+        const ov = overlayRef.current;
+        if (!ov) return;
+        const relX = event.x - ov.left;
+        const relY = event.y - ov.top;
+        const longitude = Math.max(0, Math.min(100, (relX / ov.width) * 100));
+        const latitude = Math.max(0, Math.min(100, (relY / ov.height) * 100));
+        router.push({
+          pathname: '/enclosure/newEnclosure',
+          params: { longitude: longitude.toFixed(1), latitude: latitude.toFixed(1) },
+        });
+      }),
+  []);
+
   return (
-    <View
-      style={styles.container}
-      onLayout={(e) => setContainerSize(e.nativeEvent.layout)}
-    >
+    <GestureDetector gesture={doubleTap}>
+      <View
+        style={styles.container}
+        onLayout={(e) => setContainerSize(e.nativeEvent.layout)}
+      >
       <Image
         source={require('@/assets/images/NgaManuMap.png')}
         style={StyleSheet.absoluteFillObject}
@@ -87,7 +111,8 @@ export default function HomeScreen() {
           <ThemedText type="defaultSemiBold" style={styles.label}>{enclosure.name}</ThemedText>
         </Link>
       ))}
-    </View>
+      </View>
+    </GestureDetector>
   );
 }
 

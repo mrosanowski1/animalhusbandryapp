@@ -8,6 +8,8 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { getToken } from '@/utils/storage';
+import { UserProvider } from '@/context/UserContext';
+import { UserMenuButton } from '@/components/user-menu-button';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -26,11 +28,12 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
+      <UserProvider>
+        <Stack screenOptions={{ headerRight: () => <UserMenuButton /> }}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="login" options={{ headerShown: false, headerRight: undefined }} />
+          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        </Stack>
 
       {/* Overlay hides the tab content until the auth check completes */}
       {!tokenChecked && (
@@ -39,7 +42,8 @@ export default function RootLayout() {
         </View>
       )}
 
-      <StatusBar style="auto" />
+        <StatusBar style="auto" />
+      </UserProvider>
     </ThemeProvider>
   );
 }
