@@ -14,6 +14,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { saveToken } from '@/utils/storage';
+import { API_BASE_URL } from '@/utils/config';
 
 export default function LoginScreen() {
   const colorScheme = useColorScheme();
@@ -32,7 +33,7 @@ export default function LoginScreen() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('https://localhost:44311/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),

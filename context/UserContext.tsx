@@ -6,6 +6,7 @@ import { getToken } from '@/utils/storage';
 interface User {
   email: string;
   role: string;
+  roles: string[];
 }
 
 interface UserContextType {
@@ -29,11 +30,21 @@ function extractUser(payload: Record<string, unknown>): User {
     (payload['email'] as string) ??
     (payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] as string) ??
     '';
+
   const rawRole =
     payload['role'] ??
-    payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
-  const role = Array.isArray(rawRole) ? rawRole[0] : (rawRole as string) ?? 'User';
-  return { email, role };
+    payload['roles'] ??
+    payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ??
+    payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role'];
+
+  const roles: string[] = Array.isArray(rawRole)
+    ? rawRole.map(String)
+    : rawRole != null
+    ? [String(rawRole)]
+    : [];
+
+  const role = roles[0] ?? 'User';
+  return { email, role, roles };
 }
 
 export function UserProvider({ children }: { children: ReactNode }) {

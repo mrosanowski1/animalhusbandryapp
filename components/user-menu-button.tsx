@@ -13,8 +13,12 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { router } from 'expo-router';
+
 import { useUser } from '@/context/UserContext';
 import { apiFetch } from '@/utils/api';
+import { API_BASE_URL } from '@/utils/config';
+import { deleteToken } from '@/utils/storage';
 
 export function UserMenuButton() {
   const { user } = useUser();
@@ -22,27 +26,47 @@ export function UserMenuButton() {
   const colors = Colors[colorScheme ?? 'light'];
 
   const [visible, setVisible] = useState(false);
+  const [accordionOpen, setAccordionOpen] = useState(false);
+
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [resetting, setResetting] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
   const [resetSuccess, setResetSuccess] = useState(false);
 
+  const passwordMismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
+  const canSubmit =
+    currentPassword.trim().length > 0 &&
+    newPassword.trim().length > 0 &&
+    newPassword === confirmPassword;
+
   const close = () => {
     setVisible(false);
+    setAccordionOpen(false);
     setCurrentPassword('');
     setNewPassword('');
+    setConfirmPassword('');
     setResetError(null);
     setResetSuccess(false);
   };
 
+  const handleLogout = async () => {
+    try {
+      await apiFetch(`${API_BASE_URL}/auth/logout`, { method: 'POST' });
+    } finally {
+      await deleteToken();
+      router.replace('/login');
+    }
+  };
+
   const handleResetPassword = async () => {
-    if (!currentPassword.trim() || !newPassword.trim()) return;
+    if (!canSubmit) return;
     setResetting(true);
     setResetError(null);
     setResetSuccess(false);
     try {
-      const response = await apiFetch('https://localhost:44311/auth/change-password', {
+      const response = await apiFetch(`${API_BASE_URL}/Auth/change-password`, {
         method: 'POST',
         body: JSON.stringify({ currentPassword, newPassword }),
       });
@@ -50,6 +74,7 @@ export function UserMenuButton() {
       setResetSuccess(true);
       setCurrentPassword('');
       setNewPassword('');
+      setConfirmPassword('');
     } catch {
       setResetError('Failed to update password. Please check your current password.');
     } finally {
@@ -58,7 +83,6 @@ export function UserMenuButton() {
   };
 
   const inputStyle = [styles.input, { color: colors.text, borderColor: colors.icon }];
-  const canSubmit = currentPassword.trim().length > 0 && newPassword.trim().length > 0;
 
   return (
     <>
@@ -68,6 +92,7 @@ export function UserMenuButton() {
 
       <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={close}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
           <ThemedView style={styles.menu}>
 
             <ThemedText type="subtitle" style={styles.sectionTitle}>Account</ThemedText>
@@ -78,43 +103,77 @@ export function UserMenuButton() {
             <ThemedText style={styles.infoLabel}>Permission Level</ThemedText>
             <ThemedText style={styles.infoValue}>{user?.role ?? '—'}</ThemedText>
 
-            <View style={[styles.divider, { backgroundColor: colors.icon }]} />
-
-            <ThemedText type="subtitle" style={styles.sectionTitle}>Reset Password</ThemedText>
-
-            <TextInput
-              style={inputStyle}
-              placeholder="Current password"
-              placeholderTextColor={colors.icon}
-              secureTextEntry
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-            />
-            <TextInput
-              style={inputStyle}
-              placeholder="New password"
-              placeholderTextColor={colors.icon}
-              secureTextEntry
-              value={newPassword}
-              onChangeText={setNewPassword}
-            />
-
-            {resetError && <ThemedText style={styles.error}>{resetError}</ThemedText>}
-            {resetSuccess && <ThemedText style={styles.success}>Password updated successfully.</ThemedText>}
-
-            <TouchableOpacity
-              style={[styles.button, !canSubmit && styles.buttonDisabled]}
-              onPress={handleResetPassword}
-              disabled={!canSubmit || resetting}
-            >
-              {resetting ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <ThemedText style={styles.buttonText}>Update Password</ThemedText>
-              )}
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <ThemedText style={styles.logoutText}>Log Out</ThemedText>
             </TouchableOpacity>
 
+            <View style={[styles.divider, { backgroundColor: colors.icon }]} />
+
+            {/* Accordion header */}
+            <TouchableOpacity
+              style={styles.accordionHeader}
+              onPress={() => {
+                setAccordionOpen((v) => !v);
+                setResetError(null);
+                setResetSuccess(false);
+              }}
+              activeOpacity={0.7}
+            >
+              <ThemedText type="subtitle">Reset Password</ThemedText>
+              <ThemedText style={{ color: colors.icon }}>{accordionOpen ? '▲' : '▼'}</ThemedText>
+            </TouchableOpacity>
+
+            {accordionOpen && (
+              <View style={styles.accordionBody}>
+                <TextInput
+                  style={inputStyle}
+                  placeholder="Current password"
+                  placeholderTextColor={colors.icon}
+                  secureTextEntry
+                  value={currentPassword}
+                  onChangeText={setCurrentPassword}
+                />
+                <TextInput
+                  style={inputStyle}
+                  placeholder="New password"
+                  placeholderTextColor={colors.icon}
+                  secureTextEntry
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                />
+                <TextInput
+                  style={[inputStyle, passwordMismatch && styles.inputError]}
+                  placeholder="Confirm new password"
+                  placeholderTextColor={colors.icon}
+                  secureTextEntry
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                />
+
+                {passwordMismatch && (
+                  <ThemedText style={styles.error}>Passwords do not match.</ThemedText>
+                )}
+                {resetError && <ThemedText style={styles.error}>{resetError}</ThemedText>}
+                {resetSuccess && (
+                  <ThemedText style={styles.success}>Password updated successfully.</ThemedText>
+                )}
+
+                <TouchableOpacity
+                  style={[styles.button, !canSubmit && styles.buttonDisabled]}
+                  onPress={handleResetPassword}
+                  disabled={!canSubmit || resetting}
+                >
+                  {resetting ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <ThemedText style={styles.buttonText}>Update Password</ThemedText>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+
           </ThemedView>
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
     </>
@@ -149,9 +208,29 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginBottom: 12,
   },
+  logoutButton: {
+    marginTop: 4,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#c0392b',
+    alignItems: 'center',
+  },
+  logoutText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 15,
+  },
   divider: {
     height: StyleSheet.hairlineWidth,
     marginVertical: 16,
+  },
+  accordionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  accordionBody: {
+    marginTop: 16,
   },
   input: {
     borderWidth: 1,
@@ -159,6 +238,9 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 15,
     marginBottom: 12,
+  },
+  inputError: {
+    borderColor: 'red',
   },
   error: {
     color: 'red',

@@ -18,6 +18,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { apiFetch } from '@/utils/api';
+import { API_BASE_URL } from '@/utils/config';
 
 interface EnclosureSummary {
   id: string;
@@ -117,13 +118,13 @@ export default function NewAnimalScreen() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    apiFetch('https://localhost:44311/Enclosures')
+    apiFetch(`${API_BASE_URL}/Enclosures`)
       .then((res) => res.json())
       .then((data: EnclosureSummary[]) => setEnclosures(data))
       .catch(() => setEnclosures([]))
       .finally(() => setEnclosuresLoading(false));
 
-    apiFetch('https://localhost:44311/Animals/Species')
+    apiFetch(`${API_BASE_URL}/Animals/Species`)
       .then((res) => res.json())
       .then((data: { value: number; description: string }[]) =>
         setSpeciesOptions(data.map((s) => ({ value: s.value, label: s.description })))
@@ -139,7 +140,7 @@ export default function NewAnimalScreen() {
     setSubmitting(true);
     setError(null);
     try {
-      const response = await apiFetch('https://localhost:44311/Animals', {
+      const response = await apiFetch(`${API_BASE_URL}/Animals`, {
         method: 'POST',
         body: JSON.stringify({
           name: name.trim(),

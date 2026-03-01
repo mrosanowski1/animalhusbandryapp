@@ -15,6 +15,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { apiFetch } from '@/utils/api';
+import { API_BASE_URL } from '@/utils/config';
 
 export default function NewEnclosureScreen() {
   const colorScheme = useColorScheme();
@@ -37,7 +38,7 @@ export default function NewEnclosureScreen() {
     setSubmitting(true);
     setError(null);
     try {
-      const response = await apiFetch('https://localhost:44311/Enclosures', {
+      const response = await apiFetch(`${API_BASE_URL}/Enclosures`, {
         method: 'POST',
         body: JSON.stringify({
           name: name.trim(),

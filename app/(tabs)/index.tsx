@@ -6,6 +6,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
 import { ThemedText } from '@/components/themed-text';
 import { apiFetch } from '@/utils/api';
+import { API_BASE_URL } from '@/utils/config';
 
 interface EnclosureSummary {
   id: string;
@@ -48,7 +49,7 @@ export default function HomeScreen() {
   const [imageSize, setImageSize] = useState<Size | null>(null);
 
   useEffect(() => {
-    apiFetch('https://localhost:44311/Enclosures')
+    apiFetch(`${API_BASE_URL}/Enclosures`)
       .then((res) => res.json())
       .then((data) => setEnclosures(data))
       .catch(() => setEnclosures([]))

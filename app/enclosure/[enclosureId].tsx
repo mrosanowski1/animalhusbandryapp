@@ -19,6 +19,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { apiFetch } from '@/utils/api';
+import { API_BASE_URL } from '@/utils/config';
 
 interface Animal {
   id: string;
@@ -85,7 +86,7 @@ export default function ModalScreen() {
 
   const fetchEnclosure = useCallback(async () => {
     try {
-      const response = await apiFetch(`https://localhost:44311/Enclosures/${enclosureId}`);
+      const response = await apiFetch(`${API_BASE_URL}/Enclosures/${enclosureId}`);
       if (!response.ok) throw new Error('Failed to fetch enclosure');
       const data = await response.json();
       setEnclosure(data);
@@ -103,7 +104,7 @@ export default function ModalScreen() {
   const completeJob = async (jobId: string) => {
     setCompletingJobId(jobId);
     try {
-      const response = await apiFetch(`https://localhost:44311/Jobs/${jobId}/Complete`, {
+      const response = await apiFetch(`${API_BASE_URL}/Jobs/${jobId}/Complete`, {
         method: 'PATCH',
       });
       if (!response.ok) throw new Error('Failed to complete job');
@@ -123,7 +124,7 @@ export default function ModalScreen() {
     if (!jobName.trim()) return;
     setSubmittingJob(true);
     try {
-      await apiFetch(`https://localhost:44311/Enclosures/${enclosureId}/Jobs`, {
+      await apiFetch(`${API_BASE_URL}/Enclosures/${enclosureId}/Jobs`, {
         method: 'POST',
         body: JSON.stringify({
           name: jobName.trim(),
@@ -149,7 +150,7 @@ export default function ModalScreen() {
     if (!commentText.trim()) return;
     setSubmitting(true);
     try {
-      await apiFetch(`https://localhost:44311/Enclosures/${enclosureId}/Comments`, {
+      await apiFetch(`${API_BASE_URL}/Enclosures/${enclosureId}/Comments`, {
         method: 'POST',
         body: JSON.stringify({ text: commentText }),
       });

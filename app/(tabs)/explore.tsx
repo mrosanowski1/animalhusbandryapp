@@ -4,6 +4,7 @@ import { ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { apiFetch } from '@/utils/api';
+import { API_BASE_URL } from '@/utils/config';
 
 interface Comment {
   id: string;
@@ -30,7 +31,7 @@ export default function CommentsScreen() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    apiFetch('https://localhost:44311/Comments')
+    apiFetch(`${API_BASE_URL}/Comments`)
       .then((res) => res.json())
       .then((data: Comment[]) => {
         const sorted = data.sort(
