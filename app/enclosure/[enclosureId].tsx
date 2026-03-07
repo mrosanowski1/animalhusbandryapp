@@ -34,12 +34,14 @@ interface Job {
   actionType?: string;
   description?: string;
   completedAt?: string;
+  completedBy?: string;
   isRecurring?: boolean;
 }
 
 interface Comment {
   id?: string;
   text?: string;
+  createdBy?: string;
 }
 
 interface Enclosure {
@@ -219,6 +221,11 @@ export default function ModalScreen() {
                       ↻ Daily
                     </ThemedText>
                   )}
+                  {job.completedBy && isCompletedToday(job.completedAt) && (
+                    <ThemedText style={[styles.cardDetail, styles.completedText]}>
+                      Completed by: {job.completedBy}
+                    </ThemedText>
+                  )}
                 </View>
                 {!isCompletedToday(job.completedAt) && (
                   <TouchableOpacity
@@ -245,6 +252,9 @@ export default function ModalScreen() {
           enclosure.comments.map((comment, index) => (
             <ThemedView key={comment.id ?? index} style={styles.card}>
               <ThemedText style={styles.cardDetail}>{comment.text}</ThemedText>
+              {comment.createdBy && (
+                <ThemedText style={styles.commentAuthor}>{comment.createdBy}</ThemedText>
+              )}
             </ThemedView>
           ))
         ) : (
@@ -507,6 +517,11 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  commentAuthor: {
+    fontSize: 12,
+    opacity: 0.6,
+    marginTop: 4,
   },
   recurringBadge: {
     fontSize: 12,
