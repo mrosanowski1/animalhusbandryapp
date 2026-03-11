@@ -46,7 +46,7 @@ interface Comment {
 
 interface DataLogField {
   id: string;
-  name: string;
+  title: string;
 }
 
 interface DataLog {
@@ -55,6 +55,14 @@ interface DataLog {
   enclosureId: string | null;
   animalId: string | null;
   fields: DataLogField[];
+  entries?: DataLogEntry[];
+}
+
+interface DataLogEntry {
+  id: string;
+  createdAt?: string;
+  createdBy?: string;
+  values: { fieldId: string; value: string }[];
 }
 
 interface Enclosure {
@@ -120,15 +128,20 @@ export default function ModalScreen() {
     if (enclosureId) fetchEnclosure();
   }, [enclosureId, fetchEnclosure]);
 
-  useEffect(() => {
+  const fetchDataLogs = useCallback(async () => {
     if (!enclosureId) return;
-    apiFetch(`${API_BASE_URL}/datalogs`)
-      .then((res) => res.json())
-      .then((data: DataLog[]) =>
-        setDataLogs(data.filter((d) => d.enclosureId === enclosureId))
-      )
-      .catch(() => setDataLogs([]));
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/datalogs`);
+      const data: DataLog[] = await res.json();
+      setDataLogs(data.filter((d) => d.enclosureId === enclosureId));
+    } catch {
+      setDataLogs([]);
+    }
   }, [enclosureId]);
+
+  useEffect(() => {
+    fetchDataLogs();
+  }, [fetchDataLogs]);
 
   const completeJob = async (jobId: string) => {
     setCompletingJobId(jobId);
@@ -200,6 +213,7 @@ export default function ModalScreen() {
       });
       if (!response.ok) throw new Error('Failed to submit entry');
       setDataLogValues((prev) => ({ ...prev, [dataLog.id]: {} }));
+      await fetchDataLogs();
     } catch {
       setError('Failed to submit data log entry');
     } finally {
@@ -323,13 +337,13 @@ export default function ModalScreen() {
                 <ThemedText style={styles.cardTitle}>{dataLog.name}</ThemedText>
                 {dataLog.fields.map((field) => (
                   <View key={field.id} style={styles.dataLogFieldRow}>
-                    <ThemedText style={styles.dataLogFieldLabel}>{field.name}</ThemedText>
+                    <ThemedText style={styles.dataLogFieldLabel}>{field.title}</ThemedText>
                     <TextInput
                       style={[
                         styles.dataLogInput,
                         { color: colors.text, borderColor: colors.icon },
                       ]}
-                      placeholder={`Enter ${field.name}`}
+                      placeholder={`Enter ${field.title}`}
                       placeholderTextColor={colors.icon}
                       value={values[field.id] ?? ''}
                       onChangeText={(text) => setDataLogFieldValue(dataLog.id, field.id, text)}
@@ -347,6 +361,27 @@ export default function ModalScreen() {
                     <Text style={styles.completeButtonText}>Submit Entry</Text>
                   )}
                 </TouchableOpacity>
+                {(dataLog.entries ?? []).length > 0 && (
+                  <View style={styles.entriesSection}>
+                    <ThemedText style={styles.entriesHeading}>Recorded Entries</ThemedText>
+                    {(dataLog.entries ?? []).map((entry) => (
+                      <View key={entry.id} style={[styles.entryCard, { borderColor: colors.icon }]}>
+                        <ThemedText style={styles.entryMeta}>
+                          {entry.createdAt ? new Date(entry.createdAt).toLocaleString() : ''}
+                          {entry.createdBy ? ` · ${entry.createdBy}` : ''}
+                        </ThemedText>
+                        {entry.values.map((v) => {
+                          const field = dataLog.fields.find((f) => f.id === v.fieldId);
+                          return (
+                            <ThemedText key={v.fieldId} style={styles.entryValue}>
+                              {field?.title ?? v.fieldId}: {v.value}
+                            </ThemedText>
+                          );
+                        })}
+                      </View>
+                    ))}
+                  </View>
+                )}
               </ThemedView>
             );
           })
@@ -667,5 +702,31 @@ const styles = StyleSheet.create({
   textInputMultiline: {
     minHeight: 80,
     textAlignVertical: 'top',
+  },
+  entriesSection: {
+    marginTop: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#aaa',
+    paddingTop: 10,
+  },
+  entriesHeading: {
+    fontWeight: '600',
+    fontSize: 13,
+    marginBottom: 8,
+  },
+  entryCard: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 6,
+    padding: 8,
+    marginBottom: 6,
+  },
+  entryMeta: {
+    fontSize: 12,
+    opacity: 0.6,
+    marginBottom: 4,
+  },
+  entryValue: {
+    fontSize: 13,
+    marginBottom: 1,
   },
 });
