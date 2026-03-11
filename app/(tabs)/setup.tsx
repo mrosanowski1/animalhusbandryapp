@@ -22,6 +22,10 @@ export default function SetupScreen() {
           <ThemedText style={styles.buttonText}>+ New Animal</ThemedText>
         </TouchableOpacity>
 
+        <TouchableOpacity style={[styles.button, styles.buttonDataLog]} onPress={() => router.push('/datalog/newDataLog')}>
+          <ThemedText style={styles.buttonText}>+ New Data Log</ThemedText>
+        </TouchableOpacity>
+
         {isAdmin && (
           <TouchableOpacity style={[styles.button, styles.buttonTertiary]} onPress={() => router.push('/auth/registerUser')}>
             <ThemedText style={styles.buttonText}>+ Register New User</ThemedText>
@@ -53,6 +57,9 @@ const styles = StyleSheet.create({
   },
   buttonSecondary: {
     backgroundColor: '#4a9e6e',
+  },
+  buttonDataLog: {
+    backgroundColor: '#c47a2e',
   },
   buttonTertiary: {
     backgroundColor: '#7a5ea4',

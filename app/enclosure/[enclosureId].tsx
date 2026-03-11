@@ -44,6 +44,19 @@ interface Comment {
   createdBy?: string;
 }
 
+interface DataLogField {
+  id: string;
+  name: string;
+}
+
+interface DataLog {
+  id: string;
+  name: string;
+  enclosureId: string | null;
+  animalId: string | null;
+  fields: DataLogField[];
+}
+
 interface Enclosure {
   id: string;
   name: string;
@@ -63,6 +76,10 @@ export default function ModalScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const [completingJobId, setCompletingJobId] = useState<string | null>(null);
+
+  const [dataLogs, setDataLogs] = useState<DataLog[]>([]);
+  const [dataLogValues, setDataLogValues] = useState<Record<string, Record<string, string>>>({});
+  const [submittingDataLogId, setSubmittingDataLogId] = useState<string | null>(null);
 
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [commentText, setCommentText] = useState('');
@@ -102,6 +119,16 @@ export default function ModalScreen() {
   useEffect(() => {
     if (enclosureId) fetchEnclosure();
   }, [enclosureId, fetchEnclosure]);
+
+  useEffect(() => {
+    if (!enclosureId) return;
+    apiFetch(`${API_BASE_URL}/datalogs`)
+      .then((res) => res.json())
+      .then((data: DataLog[]) =>
+        setDataLogs(data.filter((d) => d.enclosureId === enclosureId))
+      )
+      .catch(() => setDataLogs([]));
+  }, [enclosureId]);
 
   const completeJob = async (jobId: string) => {
     setCompletingJobId(jobId);
@@ -148,6 +175,38 @@ export default function ModalScreen() {
     }
   };
 
+  const setDataLogFieldValue = (dataLogId: string, fieldId: string, value: string) => {
+    setDataLogValues((prev) => ({
+      ...prev,
+      [dataLogId]: { ...prev[dataLogId], [fieldId]: value },
+    }));
+  };
+
+  const canSubmitDataLogEntry = (dataLog: DataLog): boolean => {
+    const values = dataLogValues[dataLog.id] ?? {};
+    return dataLog.fields.every((f) => (values[f.id] ?? '').trim().length > 0);
+  };
+
+  const submitDataLogEntry = async (dataLog: DataLog) => {
+    if (!canSubmitDataLogEntry(dataLog)) return;
+    setSubmittingDataLogId(dataLog.id);
+    try {
+      const values = dataLogValues[dataLog.id] ?? {};
+      const response = await apiFetch(`${API_BASE_URL}/datalogs/${dataLog.id}/entries`, {
+        method: 'POST',
+        body: JSON.stringify({
+          values: dataLog.fields.map((f) => ({ fieldId: f.id, value: values[f.id] })),
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to submit entry');
+      setDataLogValues((prev) => ({ ...prev, [dataLog.id]: {} }));
+    } catch {
+      setError('Failed to submit data log entry');
+    } finally {
+      setSubmittingDataLogId(null);
+    }
+  };
+
   const submitComment = async () => {
     if (!commentText.trim()) return;
     setSubmitting(true);
@@ -181,11 +240,15 @@ export default function ModalScreen() {
         <ThemedText type="subtitle" style={styles.sectionTitle}>Animals</ThemedText>
         {enclosure.animals?.length > 0 ? (
           enclosure.animals.map((animal) => (
-            <ThemedView key={animal.id} style={styles.card}>
-              <ThemedText style={styles.cardTitle}>{animal.name}</ThemedText>
-              <ThemedText style={styles.cardDetail}>Species: {animal.species}</ThemedText>
-              {animal.age && <ThemedText style={styles.cardDetail}>Age: {animal.age}</ThemedText>}
-            </ThemedView>
+            <Link key={animal.id} href={`/animal/${animal.id}`} asChild>
+              <TouchableOpacity>
+                <ThemedView style={styles.card}>
+                  <ThemedText style={styles.cardTitle}>{animal.name}</ThemedText>
+                  <ThemedText style={styles.cardDetail}>Species: {animal.species}</ThemedText>
+                  {animal.age && <ThemedText style={styles.cardDetail}>Age: {animal.age}</ThemedText>}
+                </ThemedView>
+              </TouchableOpacity>
+            </Link>
           ))
         ) : (
           <ThemedText>No animals in this enclosure</ThemedText>
@@ -245,6 +308,48 @@ export default function ModalScreen() {
           ))
         ) : (
           <ThemedText>No jobs for this enclosure</ThemedText>
+        )}
+
+        <ThemedText type="subtitle" style={styles.sectionTitle}>Data Logs</ThemedText>
+        {dataLogs.length === 0 ? (
+          <ThemedText>No data logs for this enclosure</ThemedText>
+        ) : (
+          dataLogs.map((dataLog) => {
+            const values = dataLogValues[dataLog.id] ?? {};
+            const ready = canSubmitDataLogEntry(dataLog);
+            const isSubmitting = submittingDataLogId === dataLog.id;
+            return (
+              <ThemedView key={dataLog.id} style={styles.card}>
+                <ThemedText style={styles.cardTitle}>{dataLog.name}</ThemedText>
+                {dataLog.fields.map((field) => (
+                  <View key={field.id} style={styles.dataLogFieldRow}>
+                    <ThemedText style={styles.dataLogFieldLabel}>{field.name}</ThemedText>
+                    <TextInput
+                      style={[
+                        styles.dataLogInput,
+                        { color: colors.text, borderColor: colors.icon },
+                      ]}
+                      placeholder={`Enter ${field.name}`}
+                      placeholderTextColor={colors.icon}
+                      value={values[field.id] ?? ''}
+                      onChangeText={(text) => setDataLogFieldValue(dataLog.id, field.id, text)}
+                    />
+                  </View>
+                ))}
+                <TouchableOpacity
+                  style={[styles.dataLogSubmitButton, !ready && styles.dataLogSubmitDisabled]}
+                  onPress={() => submitDataLogEntry(dataLog)}
+                  disabled={!ready || isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.completeButtonText}>Submit Entry</Text>
+                  )}
+                </TouchableOpacity>
+              </ThemedView>
+            );
+          })
         )}
 
         <ThemedText type="subtitle" style={styles.sectionTitle}>Comments</ThemedText>
@@ -527,6 +632,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#0a7ea4',
     marginTop: 2,
+  },
+  dataLogFieldRow: {
+    marginBottom: 10,
+  },
+  dataLogFieldLabel: {
+    fontWeight: '600',
+    marginBottom: 4,
+    fontSize: 13,
+  },
+  dataLogInput: {
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: 8,
+    fontSize: 15,
+  },
+  dataLogSubmitButton: {
+    marginTop: 12,
+    backgroundColor: '#0a7ea4',
+    borderRadius: 6,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  dataLogSubmitDisabled: {
+    opacity: 0.4,
   },
   switchRow: {
     flexDirection: 'row',
