@@ -266,7 +266,7 @@ export default function ModalScreen() {
             <ThemedView key={job.id} style={styles.card}>
               <View style={styles.jobRow}>
                 <View style={styles.jobInfo}>
-                  <ThemedText style={[styles.cardTitle, isCompletedToday(job.completedAt) && styles.completedText]}>
+                  <ThemedText style={styles.cardTitle}>
                     {job.name}
                   </ThemedText>
                   {job.actionType && (
@@ -285,7 +285,7 @@ export default function ModalScreen() {
                     </ThemedText>
                   )}
                   {job.completedBy && isCompletedToday(job.completedAt) && (
-                    <ThemedText style={[styles.cardDetail, styles.completedText]}>
+                    <ThemedText style={styles.cardDetail}>
                       Completed by: {job.completedBy}
                     </ThemedText>
                   )}
